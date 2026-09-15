@@ -33,7 +33,7 @@ Windows 작업 스케줄러 --(상시 실행)--> nrw.watcher.service    ┘
 ## 설치
 
 ```powershell
-git clone https://github.com/<your-github-username>/naver-reservation-watcher-mcp.git
+git clone https://github.com/LEESUJEONG1030/naver-reservation-watcher-mcp.git
 cd naver-reservation-watcher-mcp
 powershell -ExecutionPolicy Bypass -File scripts\setup_venv.ps1
 ```

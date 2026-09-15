@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/<your-github-username>/naver-reservation-watcher-mcp"
+    "url": "https://github.com/LEESUJEONG1030/naver-reservation-watcher-mcp"
   },
   "keywords": ["naver", "reservation", "booking", "watcher", "playwright"],
   "compatibility": {
