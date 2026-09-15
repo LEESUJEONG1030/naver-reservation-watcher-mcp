@@ -78,7 +78,14 @@ powershell -ExecutionPolicy Bypass -File scripts\register_task_scheduler.ps1
   `scripts\unregister_task_scheduler.ps1` 로 제거하세요.
 - 로그는 `data\logs\watcher.log` 에 남습니다.
 
-## 3) Claude Desktop에 MCP 서버 연결 (.mcpb 확장 설치)
+## 3) Claude Desktop에 MCP 서버 연결
+
+Claude Desktop 버전/설치 방식에 따라 두 가지 방법 중 하나를 씁니다. **Extensions 설치
+UI가 있으면 방법 A**를, 그 메뉴가 없거나 동작하지 않으면 **방법 B**를 쓰세요 - 실제로
+Microsoft Store(MSIX)로 설치된 Claude Desktop 일부 버전에는 방법 A의 메뉴 자체가 없는
+경우가 있었고, 그때는 방법 B로 정상적으로 연결됐습니다.
+
+### 방법 A: `.mcpb` Desktop Extension 설치 (Extensions 설치 UI가 있는 경우)
 
 1. `mcpb/` 폴더가 `manifest.json` + `server/main.py`(얇은 launcher)로 구성되어 있습니다.
    패키징하려면:
@@ -95,10 +102,34 @@ powershell -ExecutionPolicy Bypass -File scripts\register_task_scheduler.ps1
    통신하는 얇은 MCP 인터페이스입니다.
 4. 일반 채팅에서 `add_reservation_watch` 등 7개 도구가 보이는지 확인합니다.
 
-Claude Desktop이 Microsoft Store(MSIX) 패키지로 설치된 경우, 흔히 알려진
-`%APPDATA%\Claude\claude_desktop_config.json` 경로는 실제 앱이 읽는 파일이 아닐 수
-있습니다 - `.mcpb` 확장 설치 방식은 Claude Desktop 자체의 Extensions 기능을 쓰므로 이
-문제를 겪지 않습니다.
+### 방법 B: 로컬 MCP 서버 직접 등록 (Extensions 설치 UI가 없는 경우)
+
+일부 Claude Desktop 설치(특히 Microsoft Store/MSIX 버전)는 **Settings → Extensions**
+메뉴 자체가 없을 수 있습니다. 이 경우 **Settings → Developer(개발자) → Local MCP
+servers(로컬 MCP 서버) → Edit Config(구성 편집)** 로 들어가면 열리는 설정 파일에
+`mcpServers` 항목을 직접 추가합니다.
+
+`<프로젝트경로>` 는 이 프로젝트를 클론/설치한 **본인의 실제 폴더 경로**로 바꿔주세요
+(예: `C:\Users\you\naver-reservation-watcher-mcp-oss`). 아래는 형태를 보여주는
+예시이며, 실제 값은 각자 환경에 맞게 채워야 합니다:
+
+```json
+"mcpServers": {
+  "naver-reservation-watcher-mcp": {
+    "command": "<프로젝트경로>\\.venv\\Scripts\\python.exe",
+    "args": ["-m", "nrw.mcp_server.server"],
+    "cwd": "<프로젝트경로>"
+  }
+}
+```
+
+기존에 다른 MCP 서버 항목이 이미 있다면 `mcpServers` 객체 안에 이 항목만 추가하고
+나머지는 그대로 두세요. 저장 후 Claude Desktop을 재시작하면 방법 A와 동일하게
+`add_reservation_watch` 등 7개 도구가 보여야 합니다.
+
+두 방법 모두 이 MCP 서버는 Playwright나 watcher를 직접 실행하지 않습니다 - 이미
+실행 중인 watcher와 SQLite `jobs`/`watches` 테이블을 통해서만 통신하는 얇은
+인터페이스입니다. (1)/(2) 단계를 먼저 완료해 watcher가 실행 중이어야 합니다.
 
 ## 사용 예시 (Claude 채팅에서)
 
