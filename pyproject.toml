@@ -1,0 +1,33 @@
+[project]
+name = "nrw"
+version = "0.1.0"
+description = "Naver Reservation Watcher - MCP server + background watcher service"
+requires-python = ">=3.11"
+dependencies = [
+    "fastmcp>=2.0",
+    "playwright>=1.45",
+    "win11toast>=0.32; platform_system=='Windows'",
+    "filelock>=3.13",
+    "tomli-w>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[project.scripts]
+nrw-mcp = "nrw.mcp_server.server:main"
+nrw-watcher = "nrw.watcher.service:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

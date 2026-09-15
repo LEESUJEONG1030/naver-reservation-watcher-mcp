@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<!--
+  실제 네이버 예약 위젯(pcmap.place.naver.com .../booking)의 날짜/인원/시간 선택
+  ~ 확인 화면 흐름을 최소 재현한 로컬 픽스처. 2026-09-15 실제 업체 A를
+  대상으로 한 DRY_RUN 조사에서 실측된 구조를 그대로 반영한다:
+
+    - 시간대 버튼을 클릭하는 것만으로는 요약 화면으로 넘어가지 않고, 별도의
+      "다음" 버튼을 한 번 더 눌러야 한다.
+    - "다음" 이후 나타나는 요약 패널은 [class*="BookingSummaryView"] 이고,
+      시간은 24시간제가 아니라 "오후 5:00" 같은 12시간제로 표시된다.
+    - 최종 제출 버튼은 [class*="SubmitButtonView"] 이고, 비활성 상태는
+      HTML disabled 속성이 아니라 aria-disabled="true" + "is_disabled" 클래스로
+      표시된다.
+    - 페이지 상단 헤더에도 텍스트가 동일한 "예약하기" 내비게이션 버튼
+      (role="button")이 별도로 존재해서, 텍스트만으로 최종 버튼을 찾으면 이
+      버튼을 오인 클릭할 위험이 있다.
+    - "이전"(뒤로가기) 버튼도 같은 SubmitButtonView 클래스 계열을 공유해서(같은
+      스텝 네비게이션 컴포넌트), 클래스 접두어만으로는 실제 제출 버튼과 구분이
+      안 된다 - data-click-code="submitbutton.submit" 속성만이 확실한 구분자다.
+    - 동의 체크박스는 실제로는 <label> 로 감싸여 있고(AUTO_ACCEPT_REQUIRED_TERMS
+      가 그 <label> 텍스트로 필수/선택/마케팅 여부를 판별한다), 라벨 안에
+      "*필수" 표시가 있다.
+    - 예약 화면 자체에 내장된 쿠폰 선택 UI(CouponSelect / CouponListModal)는
+      /home 페이지의 쿠폰 목록과 완전히 별개의 소스다.
+
+  쿼리 파라미터:
+    ?consent=required   (기본) - "모두 동의합니다 *필수" 체크박스 하나, 제출 버튼
+                          은 체크 전까지 비활성.
+    ?consent=marketing  - 마케팅성 문구인데도 *필수로 표시된 비정상 케이스.
+    ?consent=ambiguous  - 필수/선택 표시가 전혀 없는 새로운 형태의 동의 항목.
+    ?consent=none 또는 파라미터 없음 - 동의 섹션 자체가 없음(제출 버튼 항상 활성).
+
+    ?coupon=free   - 게이트 없는 무료/무조건 쿠폰 1개가 예약 화면 쿠폰 UI에 노출.
+    ?coupon=gated  - 멤버십 가입이 필요한(게이트) 쿠폰만 노출.
+    ?coupon=none 또는 파라미터 없음 - 쿠폰 선택 UI 자체가 없음.
+-->
+<html>
+<body>
+  <header>
+    <a role="button" class="BizItemHeader__text__Bqfdn" onclick="return false;">예약하기</a>
+  </header>
+  <main>
+    <div id="step-date">
+      <button class="_timeChipButton_abc123" onclick="showModal()">
+        <div class="_timeChip_abc123">
+          <span class="_timeChipLabel_abc123 _timeChipLabelAvailable_abc123">9. 18. (금)</span>
+        </div>
+      </button>
+    </div>
+
+    <div id="modal" style="display:none">
+      <button class="party-btn" data-n="1" onclick="selectParty(this)">1명</button>
+      <button class="party-btn" data-n="2" onclick="selectParty(this)">2명</button>
+      <button class="party-btn" data-n="3" onclick="selectParty(this)">3명</button>
+
+      <div class="_timePeriodGroup_xyz">
+        <span class="_timePeriodLabel_xyz">오전</span>
+        <button onclick="selectTime(this)">11:00</button>
+        <button onclick="selectTime(this)">11:30</button>
+      </div>
+      <div class="_timePeriodGroup_xyz">
+        <span class="_timePeriodLabel_xyz">오후</span>
+        <button onclick="selectTime(this)">5:00</button>
+        <button onclick="selectTime(this)">5:30</button>
+      </div>
+
+      <button id="next-btn" onclick="goNext()">다음</button>
+    </div>
+
+    <div id="confirm" style="display:none">
+      <div class="BookingSummaryView__root__qk8ZD">
+        <ul class="BookingSummaryView__list__fT5qg">
+          <li>일정</li>
+          <li id="summary-text"></li>
+          <li>인원</li>
+          <li id="summary-party"></li>
+        </ul>
+      </div>
+
+      <div id="coupon-section" style="display:none">
+        <button id="coupon-select-btn" type="button" class="CouponSelect__btn_show_coupon__j+UTf" onclick="openCouponModal()">
+          <span class="CouponSelect__title__Rate+">쿠폰 1개</span>
+          <span class="CouponSelect__show_more__XbTv2">쿠폰 선택</span>
+        </button>
+      </div>
+      <div id="coupon-modal" style="display:none">
+        <div class="modal_layout" role="dialog" aria-modal="true">
+          <ul class="CouponListModal__coupon_list__NaEEo">
+            <li class="CouponListModal__coupon_item__KwK0L">
+              <div class="Coupon__txt_title__+c-ky" id="coupon-item-title"></div>
+              <div class="Coupon__txt_date__3kq4e">2026. 12. 31. 까지</div>
+              <button type="button" class="Coupon__state_link__2b6Uj" role="checkbox" aria-checked="false"
+                id="coupon-item-checkbox" onclick="toggleCouponCheckbox()"></button>
+            </li>
+          </ul>
+          <div class="btn_group">
+            <button type="button" class="btn" onclick="closeCouponModal()">취소</button>
+            <button type="button" class="btn type_blue" onclick="applyCouponModal()">적용</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="consent-section" style="display:none">
+        <label class="Checkbox__root__OSS6v">
+          <input type="checkbox" id="consent-checkbox" onchange="toggleSubmit()">
+          <span id="consent-label-text"></span>
+        </label>
+      </div>
+      <button type="button" class="SubmitButtonView__btn_prev__aaBBc" aria-disabled="false"
+        data-click-code="submitbutton.prev">이전</button>
+      <button id="submit-btn" type="button" class="SubmitButtonView__btn_cta__xYPjJ" aria-disabled="false"
+        data-click-code="submitbutton.submit">예약 신청하기</button>
+    </div>
+  </main>
+  <script>
+    let selectedParty = null, selectedTime = null, selectedPeriod = null;
+
+    function showModal() {
+      document.getElementById('modal').style.display = 'block';
+    }
+    function selectParty(btn) {
+      document.querySelectorAll('.party-btn').forEach(b => b.classList.remove('_selected_xxx'));
+      btn.classList.add('_selected_xxx');
+      selectedParty = btn.dataset.n;
+    }
+    function selectTime(btn) {
+      selectedTime = btn.innerText.trim();
+      selectedPeriod = btn.closest('[class*="_timePeriodGroup_"]')
+        .querySelector('[class*="_timePeriodLabel_"]').innerText.trim();
+    }
+    function goNext() {
+      document.getElementById('modal').style.display = 'none';
+      document.getElementById('confirm').style.display = 'block';
+      document.getElementById('summary-text').innerText = '9. 18. (금) ' + selectedPeriod + ' ' + selectedTime;
+      document.getElementById('summary-party').innerText = selectedParty + '명';
+
+      const params = new URLSearchParams(location.search);
+
+      const couponMode = params.get('coupon');
+      if (couponMode === 'free' || couponMode === 'gated') {
+        document.getElementById('coupon-section').style.display = 'block';
+        document.getElementById('coupon-item-title').innerText = couponMode === 'free'
+          ? '테스트 무료 쿠폰'
+          : '테스트 멤버십 전용 쿠폰(멤버십 가입 시 사용 가능)';
+      }
+
+      const consentMode = params.get('consent') || 'none';
+      if (consentMode !== 'none') {
+        document.getElementById('consent-section').style.display = 'block';
+        const labelEl = document.getElementById('consent-label-text');
+        if (consentMode === 'required') {
+          labelEl.innerHTML = '아래 내용에 모두 동의합니다<em class="RequestV2__required__mv5TB">*필수</em>';
+        } else if (consentMode === 'marketing') {
+          labelEl.innerHTML = '마케팅 정보 수신 및 이벤트 안내 동의<em class="RequestV2__required__mv5TB">*필수</em>';
+        } else if (consentMode === 'ambiguous') {
+          labelEl.innerHTML = '부가 서비스 이용 동의';
+        }
+        setSubmitDisabled(true);
+      } else {
+        setSubmitDisabled(false);
+      }
+    }
+    function toggleSubmit() {
+      setSubmitDisabled(!document.getElementById('consent-checkbox').checked);
+    }
+    function setSubmitDisabled(disabled) {
+      const b = document.getElementById('submit-btn');
+      b.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+      b.classList.toggle('SubmitButtonView__is_disabled__xmn6v', disabled);
+    }
+
+    function openCouponModal() {
+      document.getElementById('coupon-modal').style.display = 'block';
+    }
+    function closeCouponModal() {
+      document.getElementById('coupon-modal').style.display = 'none';
+    }
+    function applyCouponModal() {
+      document.getElementById('coupon-modal').style.display = 'none';
+    }
+    function toggleCouponCheckbox() {
+      const cb = document.getElementById('coupon-item-checkbox');
+      const checked = cb.getAttribute('aria-checked') === 'true';
+      cb.setAttribute('aria-checked', checked ? 'false' : 'true');
+    }
+  </script>
+</body>
+</html>

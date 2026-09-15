@@ -1,0 +1,33 @@
+# naver-reservation-watcher-mcp 설정 예시
+# 실제 사용 시 이 파일을 복사해 config/config.toml 로 저장하고 값을 수정하세요.
+# (config.toml 은 .gitignore 에 포함되어 있지 않으니, 민감 정보를 넣지 마세요 - 비밀번호는 저장하지 않습니다)
+
+[polling]
+# 평상시 감시 간격(초). 매 tick마다 이 범위에서 랜덤하게 지연을 둡니다.
+interval_min_sec = 45
+interval_max_sec = 120
+
+# 오픈 예정 시각이 감지되면, 그 시각 이전 몇 초부터 타이트 폴링으로 전환할지
+tight_poll_before_open_sec = 120
+tight_interval_min_sec = 5
+tight_interval_max_sec = 15
+
+# 에러 발생 시 백오프 (초), 최대치까지 배로 증가
+error_backoff_base_sec = 30
+error_backoff_max_sec = 900
+
+# jobs 큐(즉시 확인/예약 요청) 폴링 간격 (초) - 이 값은 짧게 유지
+job_poll_interval_sec = 2
+
+[watcher]
+# heartbeat 이 이 시간(초)보다 오래되면 MCP 도구는 "watcher 미실행"으로 간주
+heartbeat_stale_after_sec = 90
+
+[notify]
+channel = "windows_toast"   # windows_toast | telegram(추후 지원)
+
+[browser]
+headless = false
+# 사용자 데이터(로그인 세션)를 저장하는 Playwright persistent profile 경로
+# 비워두면 data/browser_profile 사용
+profile_dir = ""

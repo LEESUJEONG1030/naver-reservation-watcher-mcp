@@ -1,0 +1,29 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Runtime data - never commit real login sessions, DB, or logs
+data/
+logs/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# User-specific config overrides (config.example.toml is the tracked template)
+config/config.toml
+
+# Build/test artifacts
+dist/
+.pytest_cache/
+node_modules/
+
+# Editor/OS cruft
+.DS_Store
+Thumbs.db
+
+# Scratch/debug files (never intended to ship)
+tmp_*
+*.tmp
